@@ -1,108 +1,110 @@
 # CHRONO — Chaque seconde compte.
 
-Application de gestion d’objectifs en français, inspirée des centres de contrôle tactiques : chiffres LCD dessinés en SVG, interface sombre, accents ambre/cyan/émeraude, précision à la seconde et calendrier interactif.
+Application de gestion d’objectifs en français, inspirée des centres de contrôle tactiques : chiffres LCD, interface sombre, accents ambre/cyan/émeraude, précision à la seconde et calendrier interactif.
 
-## Prérequis
+Chaque membre possède son compte, ses objectifs et son thème. Inscription publique avec nom, identifiant unique et code personnel de quatre chiffres. Les sessions sont enregistrées dans PostgreSQL et transmises par cookie HTTP-only.
 
-- Node.js **22.12+** (ou 24 LTS), npm.
-- PostgreSQL 17 ou Docker Desktop démarré avec les conteneurs Linux.
+## Déploiement public
+
+Le domaine prévu est **spicyi-drc.tech**. Suivre [le guide de production](docs/production.md) : Docker, Traefik central en mode host, DNS, HTTPS, secrets, migration, sauvegardes et restauration. Le fichier `compose.production.yml` est autonome ; ne pas le combiner avec le compose de développement.
 
 ## Démarrage local
 
-Depuis la racine du projet, dans PowerShell :
+Prérequis : Node.js 22.12+ ou 24, npm, PostgreSQL 17 ou Docker Desktop avec les conteneurs Linux démarré.
 
 ```powershell
-npm.cmd install
+npm.cmd ci
 Copy-Item backend/.env.example backend/.env
 docker compose up -d
 npm.cmd run db:migrate
 npm.cmd run dev
 ```
 
-Ouvrir **http://localhost:5173**. Vite transmet `/api` à Express sur le port 3001. Le schéma est initialisé par Docker lors de la création du volume ; `db:migrate` peut être relancé sans supprimer les objectifs.
-
-Pour une installation PostgreSQL existante, créer une base, définir `DATABASE_URL` dans `backend/.env`, puis exécuter `npm.cmd run db:migrate`. Docker n’est pas nécessaire dans ce cas. Aucun objectif d’exemple n’est inséré dans la base réelle.
-
-Les identifiants fournis sont destinés au développement local. Si vous modifiez ceux de Docker dans un `.env` à la racine (modèle `.env.example`), mettez également à jour `DATABASE_URL` dans `backend/.env`. Modifier les variables Docker ne réinitialise pas un volume déjà créé.
-
-### Démo sans PostgreSQL
-
-Lancer `npm.cmd run dev`, puis cliquer sur **Explorer la démo** si la connexion à la base échoue. Les exemples ont des dates relatives au jour courant. Les modifications de la démo sont enregistrées dans `localStorage`, sous la clé `chrono-demo-v1`, séparément des données PostgreSQL. Le bandeau **Mode démo** reste visible. **Connecter PostgreSQL** retente une connexion et charge les données réelles ; aucune donnée de démonstration n’est importée automatiquement. En cas d’échec, **Explorer la démo** retrouve les données locales.
+Ouvrir http://localhost:5173, créer un compte puis se connecter. Vite transmet `/api` à Express sur le port 3001. Pour une base existante, définir `DATABASE_URL` dans `backend/.env` et exécuter la migration. Les secrets fournis pour le développement ne sont pas destinés à la production. La base est nécessaire ; la démo locale a été retirée de l’espace membre.
 
 ## Structure
 
 ```text
 backend/
-  server.js                Serveur et arrêt propre
-  app.js                   Express, erreurs, sécurité HTTP, fichiers de production
-  db.js                    Pool PostgreSQL et configuration
-  migrate.js               Initialisation idempotente du schéma
-  routes/objectives.js     Routes CRUD, validation Zod et SQL paramétré
-  test/api.test.js          Tests HTTP avec couche PostgreSQL simulée
+  server.js                 Serveur et arrêt propre
+  app.js                    Express, protection des origines, fichiers statiques
+  auth.js                   Inscription, connexion, sessions, limitations
+  config.js                 Validation des paramètres de production
+  db.js                     Pool PostgreSQL
+  migrate.js                Migration transactionnelle idempotente
+  reset-pin.js              Réinitialisation administrative d’un code oublié
+  routes/objectives.js      CRUD isolé par propriétaire, validation Zod
+  test/api.test.js           Tests HTTP avec PostgreSQL embarqué (PGlite)
 frontend/
   src/components/
-    Dashboard.jsx          État, synchronisation REST, recherche, tri, thèmes
-    CountdownCard.jsx      Affichage LCD, progression et alertes
-    CalendarView.jsx       Calendrier mensuel, navigation et échéances
-    AddEditModal.jsx       Création, édition, suppression avec confirmation
-  src/lib/
-    api.js                 Client REST, délai maximal et données de démo
-    time.js                Dates locales, compte à rebours et progression
-  src/styles.css           Tailwind CSS v4 et design responsive
-  test/time.test.js         Tests de calculs temporels
-database/schema.sql        Table, contraintes et index PostgreSQL
-docker-compose.yml         PostgreSQL persistant
+    MemberApp.jsx           Connexion, inscription et session
+    Dashboard.jsx           Synchronisation, recherche, tri et thèmes
+    CountdownCard.jsx       Affichage LCD, progression et alertes
+    CalendarView.jsx        Calendrier et échéances
+    AddEditModal.jsx        Création, édition et suppression
+  src/lib/api.js            REST, délai maximal et expiration de session
+  src/lib/time.js           Dates locales et progression
+  src/styles.css            Tailwind v4 et interface responsive
+  test/time.test.js         Tests temporels
+database/schema.sql         Comptes, sessions, limitations et objectifs
+Dockerfile                  Construction multi-stage de production
+compose.production.yml      Application, migration, PostgreSQL privé
+deploy/traefik/              Modèle pour votre Traefik central
+deploy/init-env.mjs          Génération des secrets
+deploy/backup.sh             Sauvegarde de la base
 ```
 
-## API REST
+## API
 
-| Méthode | Route                 | Réponse                           |
-| ------- | --------------------- | --------------------------------- |
-| GET     | `/api/health`         | État réel de connexion PostgreSQL |
-| GET     | `/api/objectives`     | Objectifs triés par date cible    |
-| POST    | `/api/objectives`     | Objectif créé, statut 201         |
-| PUT     | `/api/objectives/:id` | Remplacement des champs éditables |
-| DELETE  | `/api/objectives/:id` | Statut 204                        |
+Les objectifs exigent une session. Toute mutation doit porter l’en-tête `Origin` correspondant au site ; le navigateur s’en charge. Les API ne sont pas accessibles depuis une origine externe.
 
-Exemple de corps POST/PUT :
+| Méthode | Route                 | Fonction                                    |
+| ------- | --------------------- | ------------------------------------------- |
+| GET     | `/api/health`         | Connexion PostgreSQL                        |
+| POST    | `/api/auth/register`  | Créer un compte (`username`, `name`, `pin`) |
+| POST    | `/api/auth/login`     | Se connecter (`username`, `pin`)            |
+| POST    | `/api/auth/logout`    | Révoquer la session                         |
+| GET     | `/api/auth/me`        | Membre connecté                             |
+| PATCH   | `/api/auth/me`        | Enregistrer le thème (`accent`)             |
+| GET     | `/api/objectives`     | Objectifs du membre connecté                |
+| POST    | `/api/objectives`     | Créer un objectif                           |
+| PUT     | `/api/objectives/:id` | Modifier son objectif                       |
+| DELETE  | `/api/objectives/:id` | Supprimer son objectif                      |
+
+Exemple POST/PUT :
 
 ```json
 {
   "title": "Lancement du projet Horizon",
-  "description": "Finaliser les livrables et préparer le lancement.",
-  "target_date": "2026-10-27T09:00:00+02:00",
+  "description": "Finaliser les livrables.",
+  "target_date": "2027-10-27T09:00:00+02:00",
   "category": "Professionnel",
   "color_theme": "amber"
 }
 ```
 
-`id` et `created_at` sont générés par PostgreSQL et restent inchangés lors d’une modification. Les dates cibles exigent un décalage UTC explicite ou `Z`. L’interface convertit la saisie locale en ISO UTC et affiche ensuite l’heure du navigateur. Le schéma utilise `TIMESTAMPTZ` pour les deux dates.
+Le serveur détermine le propriétaire à partir de la session ; aucun `user_id` envoyé par le client n’est accepté. Les UUID et dates de création sont générés par PostgreSQL. Dates cibles avec `Z` ou décalage UTC obligatoire. L’interface convertit la saisie locale en ISO UTC.
 
-Validation : titre de 1 à 120 caractères, description de 0 à 2 000, catégorie de 1 à 60, couleur parmi `amber`, `cyan`, `emerald`, identifiant UUID. Erreurs JSON avec `error` : 400 pour une saisie invalide, 404 pour un objectif absent, 413 pour un corps trop volumineux, 503 pour une indisponibilité du serveur/de la base. Les requêtes SQL sont paramétrées.
+Erreurs JSON : 400 saisie invalide, 401 connexion requise, 403 origine refusée, 404 objectif inexistant ou appartenant à autrui, 409 identifiant déjà utilisé, 413 requête trop volumineuse, 429 trop de tentatives, 503 indisponibilité du service.
 
-## Comportement de l’interface
+## Interface
 
-- Un seul intervalle partagé met l’heure à jour chaque seconde ; le calcul repart de l’heure système pour éviter une dérive cumulative.
-- L’objectif actif le plus proche correspondant aux filtres est mis en avant. Le tri s’applique aux autres cartes.
-- Progression : temps écoulé depuis `created_at` divisé par la durée jusqu’à `target_date`, borné entre 0 et 100 %.
-- Alerte lumineuse sous 48 heures ; animations désactivées si le système demande de réduire les mouvements.
-- À zéro, le compteur s’arrête et l’objectif rejoint **Échéances passées**. Cela indique que la date est atteinte, pas que l’utilisateur a accompli l’objectif.
-- Calendrier du lundi au dimanche, navigation entre mois, sélection du jour, détails/édition et création à la date sélectionnée. Les marqueurs incluent aussi les échéances passées.
-- Catégories libres, recherche dans le titre et la description, tri par date croissante/décroissante ou titre.
-- Modale native avec focus contenu, retour du focus, Échap, champs accessibles, confirmation de suppression et prévention des doubles soumissions.
-- Les données sont rechargées à l’ouverture et après chaque mutation réussie dans cette session. Il n’y a pas de synchronisation multi-utilisateur en temps réel.
+- Un seul intervalle partagé actualise les compteurs chaque seconde.
+- L’objectif actif le plus proche correspondant aux filtres est mis en avant.
+- Progression depuis la création, bornée entre 0 et 100 % ; urgence visuelle sous 48 heures.
+- Les échéances atteintes restent consultables : cela ne signifie pas que l’objectif est accompli.
+- Calendrier du lundi au dimanche, navigation mensuelle, détails et création au jour choisi.
+- Catégories libres, recherche, tri, modale accessible avec confirmation de suppression.
+- Thème sauvegardé par membre ; aucune donnée membre dans `localStorage`.
+- Chargement à la connexion et mutations mises à jour dans la session ; pas de synchronisation collaborative en temps réel.
 
-## Vérifications et production locale
+## Vérifications
 
-```powershell
-npm.cmd test
-npm.cmd run build
-$env:NODE_ENV = 'production'
-npm.cmd start
+```sh
+npm test
+npm run build
 ```
 
-En production locale, Express sert aussi `frontend/dist` sur **http://localhost:3001**. Les tests HTTP simulent PostgreSQL : ils vérifient les routes, la validation, le paramétrage SQL et les erreurs, mais ne remplacent pas un essai avec une vraie base démarrée.
+Les tests exécutent le SQL dans PGlite, moteur PostgreSQL embarqué : migration, inscription, connexion, séparation entre deux comptes, expiration/révocation des sessions, limitation et protection des origines. Ils ne remplacent pas l’essai des conteneurs et de Traefik sur le serveur Linux. Voir le [rapport de vérification](docs/verification.md).
 
-Cette version est destinée à un usage personnel local, avec écoute sur `127.0.0.1` par défaut. Avant toute exposition publique, ajouter une authentification, l’isolation des objectifs par utilisateur et HTTPS ; CORS ne constitue pas un contrôle d’accès.
-
-Pour arrêter PostgreSQL sans supprimer les données : `docker compose down`. Le volume nommé `chrono_data` est conservé.
+Pour arrêter PostgreSQL local sans supprimer les données : `docker compose down`. Le volume `chrono_data` est conservé.

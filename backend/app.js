@@ -1,21 +1,41 @@
 import express from 'express';
 import helmet from 'helmet';
-import cors from 'cors';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { objectiveRoutes } from './routes/objectives.js';
+import { authentication } from './auth.js';
+import { configFromEnv } from './config.js';
 
-export function createApp(db) {
+export function createApp(db, config = configFromEnv()) {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
-  app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
+  // Only loopback and the host's gateway on the dedicated production network are trusted.
+  if (config.production)
+    app.set('trust proxy', ['loopback', process.env.TRUSTED_PROXY || '172.30.24.1']);
+  app.use('/api', (_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
+  app.use('/api', (req, res, next) => {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      const origin = req.get('Origin');
+      const allowed = config.production
+        ? [config.origin]
+        : [config.origin, 'http://127.0.0.1:5173'];
+      if (!allowed.includes(origin))
+        return res.status(403).json({ error: 'Origine de la requête non autorisée.' });
+    }
+    next();
+  });
   app.use(express.json({ limit: '16kb' }));
   app.get('/api/health', async (_req, res) => {
     await db.query('SELECT 1');
     res.json({ status: 'ok', database: 'postgresql' });
   });
-  app.use('/api/objectives', objectiveRoutes(db));
+  const auth = authentication(db, config);
+  app.use('/api/auth', auth.router);
+  app.use('/api/objectives', auth.requireUser, objectiveRoutes(db));
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Route introuvable.' }));
   if (process.env.NODE_ENV === 'production') {
     const dist = fileURLToPath(new URL('../frontend/dist/', import.meta.url));

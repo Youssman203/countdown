@@ -2,6 +2,9 @@ node_modules/
 .npm-cache/
 frontend/dist/
 .env
+.env.production
+deploy/traefik/.env
+backups/
 backend/.env
 *.log
 .verification/

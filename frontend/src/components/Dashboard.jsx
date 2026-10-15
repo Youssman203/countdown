@@ -12,25 +12,23 @@ import {
   LayoutDashboard,
   LoaderCircle,
   Plus,
-  Radio,
   Search,
   Target,
   Timer,
   X,
   Zap,
+  LogOut,
 } from 'lucide-react';
 import CountdownCard from './CountdownCard.jsx';
 import CalendarView from './CalendarView.jsx';
 import AddEditModal from './AddEditModal.jsx';
-import { api, demoObjectives } from '../lib/api.js';
+import { api, request } from '../lib/api.js';
 
-const DEMO_KEY = 'chrono-demo-v1';
-export default function Dashboard() {
+export default function Dashboard({ user, onLogout, onUserChange }) {
   const [objectives, setObjectives] = useState([]),
     [now, setNow] = useState(Date.now());
   const [loading, setLoading] = useState(true),
-    [error, setError] = useState(''),
-    [demo, setDemo] = useState(false);
+    [error, setError] = useState('');
   const [view, setView] = useState('dashboard'),
     [category, setCategory] = useState('Tous'),
     [search, setSearch] = useState(''),
@@ -41,7 +39,7 @@ export default function Dashboard() {
     [toast, setToast] = useState('');
   const [accent, setAccent] = useState(() => {
     try {
-      return localStorage.getItem('chrono-accent') || 'amber';
+      return user.accent || 'amber';
     } catch {
       return 'amber';
     }
@@ -53,7 +51,6 @@ export default function Dashboard() {
     try {
       const data = await api();
       setObjectives(data);
-      setDemo(false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -71,31 +68,6 @@ export default function Dashboard() {
       return () => clearTimeout(timeout);
     }
   }, [toast]);
-  function startDemo() {
-    let data;
-    try {
-      const saved = JSON.parse(localStorage.getItem(DEMO_KEY));
-      if (
-        Array.isArray(saved) &&
-        saved.every(
-          (item) =>
-            item &&
-            typeof item.title === 'string' &&
-            typeof item.category === 'string' &&
-            typeof item.id === 'string' &&
-            ['amber', 'cyan', 'emerald'].includes(item.color_theme) &&
-            Number.isFinite(Date.parse(item.target_date)) &&
-            Number.isFinite(Date.parse(item.created_at)),
-        )
-      )
-        data = saved;
-    } catch {
-      /* storage may be unavailable */
-    }
-    setObjectives(data || demoObjectives());
-    setDemo(true);
-    setError('');
-  }
   const active = useMemo(
     () =>
       objectives
@@ -128,39 +100,19 @@ export default function Dashboard() {
       ? [...filtered].sort((a, b) => new Date(a.target_date) - new Date(b.target_date))[0]
       : null;
   const cards = master ? filtered.filter((item) => item.id !== master.id) : filtered;
-  function persistDemo(next) {
-    try {
-      localStorage.setItem(DEMO_KEY, JSON.stringify(next));
-    } catch {
-      throw new Error('Le stockage local est indisponible. Activez-le pour enregistrer la démo.');
-    }
-    setObjectives(next);
-  }
   async function save(data, id) {
-    if (demo) {
-      const item = {
-        ...data,
-        id: id || crypto.randomUUID(),
-        created_at: id ? objectives.find((o) => o.id === id).created_at : new Date().toISOString(),
-      };
-      persistDemo(id ? objectives.map((o) => (o.id === id ? item : o)) : [...objectives, item]);
-    } else {
-      const item = await api(id ? `/${id}` : '', {
-        method: id ? 'PUT' : 'POST',
-        body: JSON.stringify(data),
-      });
-      setObjectives((previous) =>
-        id ? previous.map((o) => (o.id === id ? item : o)) : [...previous, item],
-      );
-    }
+    const item = await api(id ? `/${id}` : '', {
+      method: id ? 'PUT' : 'POST',
+      body: JSON.stringify(data),
+    });
+    setObjectives((previous) =>
+      id ? previous.map((o) => (o.id === id ? item : o)) : [...previous, item],
+    );
     setToast(id ? 'Objectif mis à jour.' : 'Le compte à rebours est lancé.');
   }
   async function remove(id) {
-    if (demo) persistDemo(objectives.filter((o) => o.id !== id));
-    else {
-      await api(`/${id}`, { method: 'DELETE' });
-      setObjectives((previous) => previous.filter((o) => o.id !== id));
-    }
+    await api(`/${id}`, { method: 'DELETE' });
+    setObjectives((previous) => previous.filter((o) => o.id !== id));
     setToast('Objectif supprimé.');
   }
   function changeView(next) {
@@ -168,12 +120,18 @@ export default function Dashboard() {
     setCategory('Tous');
     setSearch('');
   }
-  function changeAccent(value) {
+  async function changeAccent(value) {
+    const previous = accent;
     setAccent(value);
     try {
-      localStorage.setItem('chrono-accent', value);
-    } catch {
-      /* session preference remains usable */
+      const result = await request('/api/auth/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ accent: value }),
+      });
+      onUserChange(result.user);
+    } catch (error) {
+      setAccent(previous);
+      setToast(error.message);
     }
   }
   const add = (date = null) => setModal({ selectedDate: date });
@@ -263,7 +221,8 @@ export default function Dashboard() {
           <div className="profile">
             <span>OP</span>
             <div>
-              Opérateur personnel<small>Un objectif à la fois.</small>
+              {user.name}
+              <small>@{user.username}</small>
             </div>
             <span className="online-dot" />
           </div>
@@ -285,15 +244,18 @@ export default function Dashboard() {
             </strong>
           </div>
           <div className="topbar-right">
+            <button
+              className="logout-button"
+              title="Se déconnecter"
+              aria-label="Se déconnecter"
+              onClick={() => onLogout().catch((error) => setToast(error.message))}
+            >
+              <LogOut size={17} />
+              <span>Déconnexion</span>
+            </button>
             <span className={`connection ${error ? 'offline' : ''}`}>
               <i />
-              {loading
-                ? 'CONNEXION'
-                : demo
-                  ? 'DÉMO LOCALE'
-                  : error
-                    ? 'HORS LIGNE'
-                    : 'SYSTÈME CONNECTÉ'}
+              {loading ? 'CONNEXION' : error ? 'HORS LIGNE' : 'SYSTÈME CONNECTÉ'}
             </span>
             <span className="header-time">{new Date(now).toLocaleTimeString('fr-FR')}</span>
             <span className="header-avatar">OP</span>
@@ -321,17 +283,6 @@ export default function Dashboard() {
               Nouvel objectif
             </button>
           </div>
-          {demo && (
-            <div className="demo-banner">
-              <span>
-                <Radio size={14} /> Mode démo · vos modifications sont enregistrées dans ce
-                navigateur.
-              </span>
-              <button onClick={load}>
-                Connecter PostgreSQL <ArrowRight size={13} />
-              </button>
-            </div>
-          )}
           {help && (
             <div className="help-panel">
               <button
@@ -399,9 +350,6 @@ export default function Dashboard() {
               <div>
                 <button className="primary-button" onClick={load}>
                   Réessayer
-                </button>
-                <button className="secondary-button" onClick={startDemo}>
-                  Explorer la démo
                 </button>
               </div>
             </div>

@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+frontend/dist
+.git
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+.npm-cache
+.verification
+docs
+backups
+*.log
+backend/test
+frontend/test
+deploy
