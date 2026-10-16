@@ -6,7 +6,7 @@ Chaque membre possède son compte, ses objectifs et son thème. Inscription publ
 
 ## Déploiement public
 
-Le domaine prévu est **spicyi-drc.tech**. Suivre [le guide de production](docs/production.md) : Docker, Traefik central en mode host, DNS, HTTPS, secrets, migration, sauvegardes et restauration. Le fichier `compose.production.yml` est autonome ; ne pas le combiner avec le compose de développement.
+Le domaine est **spicy-drc.tech**. Suivre [le guide VPS, étape par étape](docs/production.md), avec les blocs à copier-coller pour corriger l'installation existante : sauvegarde, conservation des secrets et du volume, construction, migration et vérification HTTPS. Projet Docker : `chrono` ; réseau : `spicy_web` ; routeur Traefik : `chrono-spicy-drc`. Utiliser `sh deploy/compose.sh` pour les commandes de production. Le fichier `compose.production.yml` est autonome ; ne pas le combiner avec le compose de développement.
 
 ## Démarrage local
 
@@ -51,6 +51,9 @@ Dockerfile                  Construction multi-stage de production
 compose.production.yml      Application, migration, PostgreSQL privé
 deploy/traefik/              Modèle pour votre Traefik central
 deploy/init-env.mjs          Génération des secrets
+deploy/prepare-vps.sh        Reprise des paramètres de l'installation existante
+deploy/compose.sh            Commandes avec projet chrono et environnement explicites
+deploy/diagnose.sh           Diagnostic réseau, routage et santé
 deploy/backup.sh             Sauvegarde de la base
 ```
 

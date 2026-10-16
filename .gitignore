@@ -3,6 +3,8 @@ node_modules/
 frontend/dist/
 .env
 .env.production
+.env.production.*
+!.env.production.example
 deploy/traefik/.env
 backups/
 backend/.env

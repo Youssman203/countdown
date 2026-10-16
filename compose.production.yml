@@ -1,4 +1,4 @@
-name: spicyi
+name: chrono
 services:
   postgres:
     image: postgres:17-alpine
@@ -20,19 +20,19 @@ services:
       options: { max-size: '10m', max-file: '3' }
 
   migrate:
-    image: spicyi-chrono:${APP_TAG:-local}
+    image: spicy-chrono:${APP_TAG:-local}
     build: .
     command: ['node', 'backend/migrate.js']
     environment: &app-env
       NODE_ENV: production
-      APP_ORIGIN: https://spicyi-drc.tech
+      APP_ORIGIN: https://spicy-drc.tech
       PGHOST: postgres
       PGPORT: 5432
       PGUSER: chrono
       PGPASSWORD: ${POSTGRES_PASSWORD:?Generate .env.production first}
       PGDATABASE: chrono
       PIN_PEPPER: ${PIN_PEPPER:?Generate .env.production first}
-      TRUSTED_PROXY: ${PROXY_GATEWAY:-172.30.24.1}
+      TRUSTED_PROXY: ${PROXY_GATEWAY:-172.30.25.1}
     depends_on:
       postgres: { condition: service_healthy }
     networks: [database]
@@ -44,7 +44,7 @@ services:
     logging: *logging
 
   app:
-    image: spicyi-chrono:${APP_TAG:-local}
+    image: spicy-chrono:${APP_TAG:-local}
     build: .
     restart: unless-stopped
     init: true
@@ -59,25 +59,26 @@ services:
     security_opt: ['no-new-privileges:true']
     labels:
       traefik.enable: 'true'
-      traefik.docker.network: spicyi_web
-      traefik.http.routers.spicyi.rule: Host(`spicyi-drc.tech`)
-      traefik.http.routers.spicyi.entrypoints: websecure
-      traefik.http.routers.spicyi.tls: 'true'
-      traefik.http.routers.spicyi.tls.certresolver: letsencrypt
-      traefik.http.routers.spicyi.service: spicyi
-      traefik.http.services.spicyi.loadbalancer.server.port: '3001'
-      traefik.http.services.spicyi.loadbalancer.healthcheck.path: /api/health
-      traefik.http.services.spicyi.loadbalancer.healthcheck.interval: 30s
+      traefik.docker.network: spicy_web
+      traefik.http.routers.chrono-spicy-drc.rule: Host(`spicy-drc.tech`)
+      traefik.http.routers.chrono-spicy-drc.entrypoints: websecure
+      traefik.http.routers.chrono-spicy-drc.tls: 'true'
+      traefik.http.routers.chrono-spicy-drc.tls.certresolver: letsencrypt
+      traefik.http.routers.chrono-spicy-drc.service: chrono-spicy-drc
+      traefik.http.services.chrono-spicy-drc.loadbalancer.server.port: '3001'
+      traefik.http.services.chrono-spicy-drc.loadbalancer.healthcheck.path: /api/health
+      traefik.http.services.chrono-spicy-drc.loadbalancer.healthcheck.interval: 30s
     logging: *logging
 
 networks:
   web:
-    name: spicyi_web
+    name: spicy_web
     ipam:
       config:
-        - subnet: ${PROXY_SUBNET:-172.30.24.0/24}
-          gateway: ${PROXY_GATEWAY:-172.30.24.1}
+        - subnet: ${PROXY_SUBNET:-172.30.25.0/24}
+          gateway: ${PROXY_GATEWAY:-172.30.25.1}
   database:
     internal: true
 volumes:
   postgres_data:
+    name: ${POSTGRES_VOLUME:-chrono_postgres_data}

@@ -12,7 +12,7 @@ export function createApp(db, config = configFromEnv()) {
   app.use(helmet());
   // Only loopback and the host's gateway on the dedicated production network are trusted.
   if (config.production)
-    app.set('trust proxy', ['loopback', process.env.TRUSTED_PROXY || '172.30.24.1']);
+    app.set('trust proxy', ['loopback', process.env.TRUSTED_PROXY || '172.30.25.1']);
   app.use('/api', (_req, res, next) => {
     res.set('Cache-Control', 'no-store');
     next();

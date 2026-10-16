@@ -12,7 +12,7 @@
     "build": "npm run build -w frontend",
     "start": "npm run start -w backend",
     "db:migrate": "npm run db:migrate -w backend",
-    "test": "node --test backend/test/*.test.js frontend/test/*.test.js",
+    "test": "node --test backend/test/*.test.js frontend/test/*.test.js deploy/test/*.test.js",
     "format": "prettier --write ."
   },
   "devDependencies": {

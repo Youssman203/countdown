@@ -6,7 +6,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { createApp } from '../app.js';
 import { configFromEnv } from '../config.js';
 
-const origin = 'https://spicyi-drc.tech';
+const origin = 'https://spicy-drc.tech';
 const config = {
   production: true,
   origin,

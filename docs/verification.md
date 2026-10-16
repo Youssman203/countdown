@@ -1,6 +1,17 @@
 # Vérification — version membres et production
 
-Contrôles effectués le 15 octobre 2026.
+## Préparation VPS du 16 octobre 2026
+
+- Audit des sources et des fichiers de déploiement : domaine unique `spicy-drc.tech`, projet `chrono`, réseau `spicy_web`, passerelle par défaut `172.30.25.1`, routeur/service `chrono-spicy-drc`.
+- `npm test` : **15 tests réussis**, dont la conservation des secrets avec caractères spéciaux et du volume existant après export puis interprétation réelle par Docker Compose. Rejet des paramètres manquants sans sortie partielle de secrets.
+- `npm run build` : compilation de production réussie.
+- Test HTTP local du build servi par Express en mode production : `/` et son JavaScript répondent 200 ; santé 200 avec base simulée ; objectifs anonymes 401. Ce test valide le service des fichiers statiques, pas le PostgreSQL du VPS.
+- Configurations Compose application et Traefik validées avec la CLI Docker ; syntaxe des scripts shell vérifiée avec Bash.
+- Guide simplifié pour la reprise de l'installation existante, récupération des paramètres sans régénérer les secrets, sauvegarde préalable et diagnostic du 404.
+
+Docker Desktop reste arrêté sur cette machine. Les scripts de reprise ne sont pas exécutés contre le VPS depuis cette session. Le routage public et l'obtention du certificat doivent être vérifiés après transfert ; le 404 public n'est pas déclaré résolu.
+
+## Contrôles interface et membres du 15 octobre 2026
 
 - `npm test` : **13 tests réussis**. Le SQL est exécuté dans PGlite (PostgreSQL embarqué), avec migration relancée pour vérifier son idempotence.
 - Vérification HTTP : inscription, identifiant normalisé, PIN avec zéro initial, cookie sécurisé, données sensibles absentes des réponses, refus des requêtes anonymes ou d’origine incorrecte.
