@@ -22,39 +22,44 @@ const paths = {
   f: '2,5 6,9 10,13 10,32 6,36 2,32',
   g: '9,35 35,35 39,40 35,44 9,44 5,40',
 };
-function Digit({ value }) {
+function LcdValue({ digits, width }) {
   return (
-    <svg viewBox="0 0 44 81" aria-hidden="true">
-      {Object.entries(paths).map(([key, points]) => (
-        <polygon
-          key={key}
-          points={points}
-          fill="currentColor"
-          opacity={segments[Number(value)].includes(key) ? 1 : 0.045}
-        />
+    <svg viewBox={`0 0 ${width} 81`} aria-hidden="true" focusable="false">
+      {digits.split('').map((digit, index) => (
+        <g key={index} transform={`translate(${index * 48} 0)`}>
+          {Object.entries(paths).map(([key, points]) => (
+            <polygon
+              key={key}
+              points={points}
+              fill="currentColor"
+              opacity={segments[Number(digit)].includes(key) ? 1 : 0.045}
+            />
+          ))}
+        </g>
       ))}
     </svg>
   );
 }
-export function Countdown({ target, now, digital = false }) {
+export function Countdown({ target, now }) {
   const values = countdown(target, now);
+  const units = values.map((value) => {
+    const digits = String(value).padStart(2, '0');
+    return { digits, width: digits.length * 48 - 4 };
+  });
   return (
     <div
-      className={`countdown ${digital ? 'digital' : ''}`}
+      className="countdown"
+      style={{ gridTemplateColumns: units.map(({ width }) => `${width}fr`).join(' ') }}
       role="timer"
+      aria-live="off"
       aria-label={values
         .map((v, i) => `${v} ${['jours', 'heures', 'minutes', 'secondes'][i]}`)
         .join(', ')}
     >
-      {values.map((value, i) => (
+      {units.map(({ digits, width }, i) => (
         <div className="time-unit" key={i}>
-          <div className="time-value">
-            {digital
-              ? String(value)
-                  .padStart(2, '0')
-                  .split('')
-                  .map((n, index) => <Digit key={index} value={n} />)
-              : String(value).padStart(2, '0')}
+          <div className="time-value" style={{ '--lcd-width': width }}>
+            <LcdValue digits={digits} width={width} />
           </div>
           <span className="time-label">{['Jours', 'Heures', 'Minutes', 'Secondes'][i]}</span>
         </div>
@@ -117,7 +122,7 @@ export default function CountdownCard({ objective, now, master = false, onEdit }
           <span className="timezone">heure locale</span>
         </div>
       )}
-      <Countdown target={objective.target_date} now={now} digital={master} />
+      <Countdown target={objective.target_date} now={now} />
       <div className="progress-meta">
         <span>
           {expired ? (

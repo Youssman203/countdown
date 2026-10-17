@@ -566,6 +566,8 @@ select option {
   min-width: 0;
 }
 .countdown-card {
+  container-type: inline-size;
+  min-width: 0;
   border: 1px solid #2b2d2f;
   border-radius: 8px;
   background: #131619;
@@ -706,80 +708,65 @@ select option {
   margin-left: 2px;
 }
 .countdown {
+  --lcd-max-height: 56px;
+  --unit-gap: clamp(6px, 3cqw, 12px);
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin: 24px 0;
+  gap: var(--unit-gap);
+  margin: 26px 0;
+}
+.master-card .countdown {
+  --lcd-max-height: 96px;
+  --unit-gap: clamp(8px, 3cqw, 22px);
+  margin: 30px 0 29px;
 }
 .time-unit {
-  text-align: center;
-  position: relative;
   min-width: 0;
-}
-.time-unit:not(:last-child):after {
-  content: ':';
-  position: absolute;
-  right: -7px;
-  top: 0;
-  font:
-    25px Consolas,
-    monospace;
-  color: #4c5258;
+  text-align: center;
 }
 .time-value {
-  font:
-    30px/1.2 Consolas,
-    'Courier New',
-    monospace;
-  font-variant-numeric: tabular-nums;
-  color: #e2e3e4;
-  letter-spacing: 1px;
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--lcd-width) / 81;
+  max-height: var(--lcd-max-height);
+  color: var(--accent);
+}
+.time-value svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.12));
+}
+.time-unit:not(:last-child) .time-value::before,
+.time-unit:not(:last-child) .time-value::after {
+  content: '';
+  position: absolute;
+  left: calc(100% + var(--unit-gap) / 2);
+  transform: translateX(-50%);
+  width: clamp(2px, 0.8cqw, 4px);
+  aspect-ratio: 1;
+  background: var(--accent);
+  opacity: 0.55;
+  border-radius: 1px;
+}
+.time-unit:not(:last-child) .time-value::before {
+  top: 29%;
+}
+.time-unit:not(:last-child) .time-value::after {
+  bottom: 29%;
 }
 .time-label {
   display: block;
-  font-size: 7px;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: #727880;
-  margin-top: 6px;
-}
-.digital {
-  gap: 22px;
-  margin: 30px 0 29px;
-}
-.digital .time-value {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-  color: var(--accent);
-  filter: drop-shadow(0 0 8px rgba(var(--accent-rgb), 0.12));
-  width: 100%;
-  height: 75px;
-  padding: 0 3px;
-}
-.digital .time-value svg {
-  min-width: 0;
-  width: 42px;
-  flex-shrink: 1;
-}
-.digital .time-label {
+  margin-top: 10px;
   font:
-    8px Consolas,
+    clamp(6px, 2.2cqw, 8px)/1.5 Consolas,
     monospace;
-  letter-spacing: 2px;
-  margin-top: 13px;
-  color: #888378;
+  text-transform: uppercase;
+  letter-spacing: clamp(0px, 0.2cqw, 1px);
+  color: #92979c;
 }
-.digital .time-unit:after {
-  content: '';
-  height: 6px;
-  width: 5px;
-  background: var(--accent);
-  opacity: 0.55;
-  top: 23px;
-  right: -13px;
-  box-shadow: 0 23px 0 var(--accent);
-  border-radius: 1px;
+.master-card .time-label {
+  margin-top: 13px;
+  letter-spacing: clamp(0px, 0.3cqw, 2px);
 }
 .progress-meta {
   display: flex;
@@ -1488,16 +1475,6 @@ select option {
     grid-template-columns: minmax(0, 1fr) 330px;
     gap: 26px;
   }
-  .digital .time-value {
-    height: 96px;
-  }
-  .digital .time-value svg {
-    width: 52px;
-  }
-  .digital .time-unit:after {
-    top: 31px;
-    box-shadow: 0 27px 0 var(--accent);
-  }
   .master-card {
     padding: 27px 32px 0;
   }
@@ -1514,9 +1491,6 @@ select option {
   }
   .countdown-card:not(.master-card) {
     padding: 23px;
-  }
-  .time-value {
-    font-size: 36px;
   }
   .master-card h2 {
     font-size: 26px;
@@ -1565,29 +1539,11 @@ select option {
     padding-left: 20px;
     padding-right: 20px;
   }
-  .digital {
-    gap: 16px;
-  }
-  .digital .time-value {
-    height: 60px;
-    gap: 2px;
-    padding: 0;
-  }
-  .digital .time-unit:after {
-    width: 4px;
-    height: 5px;
-    right: -10px;
-    top: 18px;
-    box-shadow: 0 20px 0 var(--accent);
-  }
   .cards-grid {
     gap: 12px;
   }
   .countdown-card:not(.master-card) {
     padding: 15px;
-  }
-  .time-value {
-    font-size: 25px;
   }
   .category-pill {
     font-size: 7px;
@@ -1745,16 +1701,6 @@ select option {
   .header-time {
     padding-left: 12px;
   }
-  .digital .time-value {
-    height: 80px;
-  }
-  .digital .time-value svg {
-    width: 43px;
-  }
-  .digital .time-unit:after {
-    top: 23px;
-    box-shadow: 0 24px 0 var(--accent);
-  }
   .master-card .master-description {
     max-width: 100%;
   }
@@ -1892,8 +1838,16 @@ select option {
     width: 100%;
     justify-content: space-between;
   }
+  .search-box {
+    flex: 1;
+    min-width: 0;
+  }
   .search-box input {
-    width: 145px;
+    width: 100%;
+    min-width: 0;
+  }
+  .sort-box {
+    flex-shrink: 0;
   }
   .sort-box select {
     max-width: 130px;
@@ -1923,29 +1877,6 @@ select option {
   .master-card .card-heading > .icon-button svg {
     width: 17px;
   }
-  .digital {
-    gap: 18px;
-    margin: 27px 0;
-  }
-  .digital .time-value {
-    height: 57px;
-    gap: 3px;
-  }
-  .digital .time-value svg {
-    width: 30px;
-  }
-  .digital .time-unit:after {
-    width: 3px;
-    height: 4px;
-    right: -10px;
-    top: 18px;
-    box-shadow: 0 17px 0 var(--accent);
-  }
-  .digital .time-label {
-    font-size: 7px;
-    letter-spacing: 1px;
-    margin-top: 10px;
-  }
   .master-card .card-footer {
     margin-left: -17px;
     margin-right: -17px;
@@ -1960,12 +1891,6 @@ select option {
   }
   .countdown-card:not(.master-card) {
     padding: 20px;
-  }
-  .countdown-card:not(.master-card) .time-value {
-    font-size: 35px;
-  }
-  .countdown-card:not(.master-card) .time-label {
-    font-size: 8px;
   }
   .card-heading h2 {
     font-size: 15px;
