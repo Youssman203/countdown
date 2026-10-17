@@ -2,7 +2,7 @@
 
 Ces opérations sont réservées à une restauration volontaire, pas à la correction d'un problème de routage. Le guide principal est [production.md](production.md).
 
-Une restauration remplace les données actuelles par celles du dump. Faire d'abord une sauvegarde avec `sh deploy/backup.sh`. Vérifier le nom du volume, le dump choisi et la présence du `PIN_PEPPER` correspondant à la sauvegarde. Tester d'abord le dump dans une base séparée.
+Une restauration remplace les données actuelles par celles du dump. Faire d'abord une sauvegarde avec le bloc de commandes du guide de production. Vérifier le nom du volume, le dump choisi et la présence du `PIN_PEPPER` correspondant à la sauvegarde. Tester d'abord le dump dans une base séparée.
 
 Après avoir remplacé `NOM.dump` par le fichier réellement choisi :
 
@@ -11,10 +11,10 @@ cd /opt/countdown
 (
   set -eu
   test -s backups/NOM.dump
-  sh deploy/compose.sh stop app
-  sh deploy/compose.sh exec -T postgres pg_restore -U chrono -d chrono --clean --if-exists --exit-on-error < backups/NOM.dump
-  sh deploy/compose.sh run --rm migrate
-  sh deploy/compose.sh up -d --no-deps --wait app
+  docker compose -p chrono --env-file .env.production -f compose.production.yml stop app
+  docker compose -p chrono --env-file .env.production -f compose.production.yml exec -T postgres pg_restore -U chrono -d chrono --clean --if-exists --exit-on-error < backups/NOM.dump
+  docker compose -p chrono --env-file .env.production -f compose.production.yml run --rm migrate
+  docker compose -p chrono --env-file .env.production -f compose.production.yml up -d --no-deps --wait app
 )
 ```
 
